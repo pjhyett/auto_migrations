@@ -23,7 +23,7 @@ module AutoMigrations
     schema.gsub!(/^/, '  ')
     schema = "class InitialSchema < ActiveRecord::Migration\n  def self.up\n" + schema
     schema << "\n  def self.down\n"
-    schema << (ActiveRecord::Base.connection.tables - ["schema_info"]).map do |table| 
+    schema << (ActiveRecord::Base.connection.tables - %w(schema_info schema_migrations)).map do |table| 
                 "    drop_table :#{table}\n"
               end.join
     schema << "  end\nend\n"
@@ -117,7 +117,7 @@ module AutoMigrations
     end
   
     def drop_unused_tables
-      (ActiveRecord::Base.connection.tables - tables_in_schema - ["schema_info"]).each do |table|
+      (ActiveRecord::Base.connection.tables - tables_in_schema - %w(schema_info schema_migrations)).each do |table|
         drop_table table
       end
     end
