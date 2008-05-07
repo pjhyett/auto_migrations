@@ -4,12 +4,14 @@ module AutoMigrations
     # Turn off schema_info code for auto-migration
     class << ActiveRecord::Schema
       alias :old_define :define
-      def define(info={}, &block) instance_eval(&block) end
+      attr_accessor :version
+      def define(info={}, &block) @version=info[:version]; instance_eval(&block) end
     end
   
     load(File.join(RAILS_ROOT, 'db', 'schema.rb'))
     ActiveRecord::Migration.drop_unused_tables
     ActiveRecord::Migration.drop_unused_indexes
+    ActiveRecord::Migration.update_schema_version(ActiveRecord::Schema.version) if ActiveRecord::Schema.version
   
     class << ActiveRecord::Schema
       alias :define :old_define
@@ -129,6 +131,10 @@ module AutoMigrations
           remove_index table_name, :name => index_name
         end
       end
+    end
+    
+    def update_schema_version(version)
+      ActiveRecord::Base.connection.update("UPDATE #{ActiveRecord::Migrator.schema_info_table_name} SET version = #{version}")
     end
   
   end
