@@ -84,9 +84,11 @@ module AutoMigrations
     
       # Add fields to db new to schema
       (fields_in_schema.keys - fields_in_db.keys).each do |field|
-        column = fields_in_schema[field]
-        add_column table_name, column.name, column.type.to_sym, :limit => column.limit, :precision => column.precision, 
-          :scale => column.scale, :default => column.default, :null => column.null
+        column  = fields_in_schema[field]
+        options = {:limit => column.limit, :precision => column.precision, :scale => column.scale}
+        options[:default] = column.default if !column.default.nil?
+        options[:null]    = column.null    if !column.null.nil?
+        add_column table_name, column.name, column.type.to_sym, options
       end
     
       # Remove fields from db no longer in schema
@@ -95,10 +97,34 @@ module AutoMigrations
         remove_column table_name, column.name
       end
       
-      # Change field type if schema is different from db
       (fields_in_schema.keys & fields_in_db.keys).each do |field|
-        if (field != 'id') && (fields_in_schema[field].type.to_sym != fields_in_db[field].type.to_sym)
-          change_column table_name, fields_in_schema[field].name.to_sym, fields_in_schema[field].type.to_sym
+        if field != 'id' #ActiveRecord::Base.get_primary_key(table_name)
+          changed  = false  # flag
+          new_type = fields_in_schema[field].type.to_sym
+          new_attr = {}
+
+          # First, check if the field type changed
+          if fields_in_schema[field].type.to_sym != fields_in_db[field].type.to_sym
+            changed = true
+          end
+
+          # Special catch for precision/scale, since *both* must be specified together
+          # Always include them in the attr struct, but they'll only get applied if changed = true
+          new_attr[:precision] = fields_in_schema[field][:precision]
+          new_attr[:scale]     = fields_in_schema[field][:scale]
+
+          # Next, iterate through our extended attributes, looking for any differences
+          # This catches stuff like :null, :precision, etc
+          fields_in_schema[field].each_pair do |att,value|
+            next if att == :type or att == :base or att == :name # special cases
+            if !value.nil? && value != fields_in_db[field].send(att)
+              new_attr[att] = value
+              changed = true
+            end
+          end
+
+          # Change the column if applicable
+          change_column table_name, field, new_type, new_attr if changed
         end
       end
     end
@@ -109,10 +135,10 @@ module AutoMigrations
       options    = args.shift
 
       index_name = options[:name] if options  
-      index_name ||= "index_#{table_name}_on_#{fields.join('_and_')}"
+      index_name ||= ActiveRecord::Base.connection.index_name(table_name, :column => fields)
 
       (self.indexes_in_schema ||= []) << index_name
-      
+
       unless ActiveRecord::Base.connection.indexes(table_name).detect { |i| i.name == index_name }
         method_missing_without_auto_migration(method, *[table_name, fields, options], &block)
       end
