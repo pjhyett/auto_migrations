@@ -11,5 +11,10 @@ namespace :db do
     task :to_migration => :environment do
       AutoMigrations.schema_to_migration
     end
+
+    desc "Create migration from schema.rb and reset migrations log"
+    task :to_migration_with_reset => :environment do
+      AutoMigrations.schema_to_migration(true)
+    end
   end
 end

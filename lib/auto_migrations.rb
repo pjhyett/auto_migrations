@@ -18,12 +18,16 @@ module AutoMigrations
     end
   end
   
-  def self.schema_to_migration
-    schema = File.read(File.join(RAILS_ROOT, "db", "schema.rb"))
-    schema.gsub!(/#(.)+\n/, '')
-    schema.sub!(/ActiveRecord::Schema.define(.+)do[ ]?\n/, '')
-    schema.gsub!(/^/, '  ')
-    schema = "class InitialSchema < ActiveRecord::Migration\n  def self.up\n" + schema
+  def self.schema_to_migration(with_reset = false)
+    schema_in = File.read(File.join(RAILS_ROOT, "db", "schema.rb"))
+    schema_in.gsub!(/#(.)+\n/, '')
+    schema_in.sub!(/ActiveRecord::Schema.define(.+)do[ ]?\n/, '')
+    schema_in.gsub!(/^/, '  ')
+    schema = "class InitialSchema < ActiveRecord::Migration\n  def self.up\n" 
+    schema += "    # We're resetting the migrations database...\n" +
+              "    drop_table :schema_migrations\n" +
+              "    initialize_schema_migrations_table\n\n" if with_reset
+    schema += schema_in
     schema << "\n  def self.down\n"
     schema << (ActiveRecord::Base.connection.tables - %w(schema_info schema_migrations)).map do |table| 
                 "    drop_table :#{table}\n"
