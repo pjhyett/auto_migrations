@@ -43,9 +43,4 @@ Write out your schema (or use an existing one)
   -- remove_column("posts", "body")
      -> 0.0311s
 
-Found a bug?  Sweet.  Add it at the Lighthouse: 
-  http://err.lighthouseapp.com/projects/466-plugins/tickets/new
-
-Feature requests are welcome. 
-
 * PJ Hyett [ pjhyett@gmail.com ]
