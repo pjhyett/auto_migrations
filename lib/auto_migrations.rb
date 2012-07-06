@@ -165,8 +165,9 @@ module AutoMigrations
     end
     
     def update_schema_version(version)
-      ActiveRecord::Base.connection.update("INSERT INTO schema_migrations VALUES ('#{version}')")
-
+      if ActiveRecord::Base.connection.tables.include?("schema_migrations")
+        ActiveRecord::Base.connection.update("INSERT INTO schema_migrations VALUES ('#{version}')")
+      end
       schema_file = File.join(RAILS_ROOT, "db", "schema.rb")
       schema = File.read(schema_file)
       schema.sub!(/:version => \d+/, ":version => #{version}")
